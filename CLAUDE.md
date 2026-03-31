@@ -196,13 +196,6 @@ Classify permissions by blast radius:
 - The `claude-dotfiles` repo at `~/dev/claude-dotfiles-main/` needs **explicit** `Read`, `Edit`, `Write` permissions in `settings.json`. The CLAUDE.md behavioral rule ("auto-commit without authorization") is not enough — the `settings.json` permission system is the actual enforcement layer.
 - Both `~/.claude/**` and `~/dev/claude-dotfiles-main/**` must have full Read/Edit/Write permissions.
 
-### Axios Supply Chain Attack (2026-03)
-
-- npm versions `1.14.1` and `0.30.4` of `axios` were compromised with a RAT (Remote Access Trojan) via maintainer account hijack.
-- Malicious versions were removed from npm. The project (`trackr`) was not affected (using `1.13.2`).
-- As a preventive measure, axios was pinned to exact version `1.13.2` (no `^`) in `package.json` (PR #107).
-- Ref: https://socket.dev/blog/axios-npm-package-compromised
-
 ### User Environment & Toolchain
 
 - **Editor**: Doom Emacs — sync commands at `~/.config/emacs/bin/doom` or `~/.emacs.d/bin/doom`
