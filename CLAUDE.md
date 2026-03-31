@@ -35,6 +35,7 @@
 - **Always run lint and tests before committing**: ensure code is properly formatted and all tests pass before any commit. The specific commands depend on the project stack — check the project's `CLAUDE.md` or `README.md`. Never assume success without actually verifying test results.
 - **Stop on first test failure**: do NOT run the full test suite and report results afterwards. Halt on the **first** failure, analyze the failing test right away — investigate root cause, check the code under test, and discuss with the user before proceeding. Never batch-collect failures; each failure must be addressed individually before moving on.
 - **Commits use SSH signing**: git is configured with `gpg.format=ssh` and `user.signingkey=~/.ssh/id_ed25519.pub`. No YubiKey touch required — commits are signed automatically. The SSH public key is registered on GitHub as a Signing Key, so commits appear as "Verified".
+- **Always create branches from an updated main**: before creating a new branch, always `git checkout main && git pull` first, then create the branch from the updated main. Never branch off a stale or different branch unless explicitly instructed.
 
 ## Behaviors — Code Review
 
@@ -194,6 +195,13 @@ Classify permissions by blast radius:
 
 - The `claude-dotfiles` repo at `~/dev/claude-dotfiles-main/` needs **explicit** `Read`, `Edit`, `Write` permissions in `settings.json`. The CLAUDE.md behavioral rule ("auto-commit without authorization") is not enough — the `settings.json` permission system is the actual enforcement layer.
 - Both `~/.claude/**` and `~/dev/claude-dotfiles-main/**` must have full Read/Edit/Write permissions.
+
+### Axios Supply Chain Attack (2026-03)
+
+- npm versions `1.14.1` and `0.30.4` of `axios` were compromised with a RAT (Remote Access Trojan) via maintainer account hijack.
+- Malicious versions were removed from npm. The project (`trackr`) was not affected (using `1.13.2`).
+- As a preventive measure, axios was pinned to exact version `1.13.2` (no `^`) in `package.json` (PR #107).
+- Ref: https://socket.dev/blog/axios-npm-package-compromised
 
 ### User Environment & Toolchain
 
