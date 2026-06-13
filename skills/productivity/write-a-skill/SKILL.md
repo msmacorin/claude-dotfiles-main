@@ -14,6 +14,10 @@ _Source: [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skil
    - What specific use cases should it handle?
    - Does it need executable scripts or just instructions?
    - Any reference materials to include?
+   - Is this adapted/copied from an existing skill or repo? (needed for the
+     source reference in step 4)
+   - Global (`~/.claude/skills/`, every project) or project-specific
+     (`<project>/.claude/skills/`)?
 
 2. **Draft the skill** - create:
    - SKILL.md with concise instructions
@@ -25,15 +29,52 @@ _Source: [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skil
    - Anything missing or unclear?
    - Should any section be more/less detailed?
 
+4. **Place the skill**:
+   - **Project-specific**: write to
+     `<project>/.claude/skills/<skill-name>/SKILL.md` (flat, no
+     categorization).
+   - **Global**: lives in `claude-dotfiles/skills/<category>/<skill-name>/`:
+     - List existing categories (`ls claude-dotfiles/skills/`, e.g.
+       `productivity/`, `engineering/`) and read their `README.md` to see
+       what fits.
+     - Pick the best-fitting existing category, or propose a new one and
+       confirm with the user before creating it.
+     - Write `SKILL.md` (+ any extra files) to
+       `claude-dotfiles/skills/<category>/<skill-name>/`.
+     - If the category is new, create
+       `claude-dotfiles/skills/<category>/README.md` with a one-line header,
+       mirroring existing category READMEs.
+     - Add an entry for the new skill to
+       `claude-dotfiles/skills/<category>/README.md`:
+       `- **[<name>](./<name>/SKILL.md)** — <one-line description>`
+     - If adapted/copied from an external source, add
+       `_Source: [<label>](<url>)_` right after the frontmatter.
+     - Run `claude-dotfiles/scripts/link-skills.sh` to (re)generate the
+       `~/.claude/skills/<name>` symlink.
+     - Commit and push `claude-dotfiles` (per CLAUDE.md Law 2, no approval
+       needed).
+
 ## Skill Structure
 
+Project-specific:
+
 ```
-skill-name/
+<project>/.claude/skills/skill-name/
 ├── SKILL.md           # Main instructions (required)
 ├── REFERENCE.md       # Detailed docs (if needed)
 ├── EXAMPLES.md        # Usage examples (if needed)
 └── scripts/           # Utility scripts (if needed)
     └── helper.js
+```
+
+Global (categorized, see `claude-dotfiles/CLAUDE.md` dotfiles sync table):
+
+```
+claude-dotfiles/skills/<category>/
+├── README.md          # Catalog of skills in this category
+└── skill-name/
+    ├── SKILL.md
+    └── ...             # same as above
 ```
 
 ## SKILL.md Template
@@ -117,3 +158,6 @@ After drafting, verify:
 - [ ] Consistent terminology
 - [ ] Concrete examples included
 - [ ] References one level deep
+- [ ] (global) Placed in the right category folder, category README updated
+- [ ] (global) Source reference added if adapted from elsewhere
+- [ ] (global) `link-skills.sh` re-run, `~/.claude/skills/<name>` symlink verified
