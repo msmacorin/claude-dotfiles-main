@@ -4,6 +4,8 @@ description: Compact the current conversation into a slug-named handoff document
 argument-hint: "<slug> [optional: what the next session will focus on]"
 ---
 
+_Source: [mattpocock/skills](https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff)_
+
 Write a handoff document summarising the current conversation so a fresh agent (or the same agent, in a later session) can continue the work.
 
 ## Slug and save location
