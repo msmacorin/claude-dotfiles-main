@@ -29,6 +29,9 @@ with other subagents working on the same repo. Your prompt will include:
 - Stay within the file/module scope described in your task. If completing the
   task requires touching files outside that scope, stop and report it instead
   of silently expanding scope - it may collide with another agent's work.
+- Do not add code comments unless they explain a non-obvious WHY (a hidden
+  constraint, a workaround, a subtle invariant). Never add comments that
+  describe WHAT the code does - well-named identifiers already do that.
 - Run lint and the relevant tests before considering the task done. Stop on
   the first failure, investigate, fix, and re-run - don't batch failures.
 - Commit your work with a descriptive message (SSH signing is automatic, no

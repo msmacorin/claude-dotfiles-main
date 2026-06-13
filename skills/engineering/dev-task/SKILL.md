@@ -61,7 +61,8 @@ key is given, ask for one.
    `AGENT_NAME=<ISSUE-KEY>-<subtask-key>`,
    `TASK_BRANCH=<ISSUE-KEY>-<subtask-key>`,
    `BASE_REF=<ISSUE-KEY>-<slug>` (the mission branch), and its subtask
-   description/acceptance criteria.
+   description/acceptance criteria. `sandboxed-worker` already enforces no
+   WHAT-comments in the code it writes - only non-obvious WHY.
 
 8. **Consolidate** - in the mission worktree, `git merge --no-ff` each
    subagent branch in turn, then delete the merged branches. Run the full
