@@ -34,6 +34,7 @@
 
 ## Behaviors — Development
 
+- **Use the `typescript-expert` skill for all TypeScript work**: whenever writing, reviewing, or refactoring TypeScript code (frontend or backend, any project), invoke the `typescript-expert` skill (`~/.claude/skills/typescript-expert/SKILL.md`) to enforce strict typing — no `any`, branded IDs, Zod validation at boundaries, explicit return types, discriminated-union error handling — even if not explicitly requested.
 - **Always run lint and tests before committing**: ensure code is properly formatted and all tests pass before any commit. The specific commands depend on the project stack — check the project's `CLAUDE.md` or `README.md`. Never assume success without actually verifying test results.
 - **Stop on first test failure**: do NOT run the full test suite and report results afterwards. Halt on the **first** failure, analyze the failing test right away — investigate root cause, check the code under test, and discuss with the user before proceeding. Never batch-collect failures; each failure must be addressed individually before moving on.
 - **Commits use SSH signing**: git is configured with `gpg.format=ssh` and `user.signingkey=~/.ssh/id_ed25519.pub`. No YubiKey touch required — commits are signed automatically. The SSH public key is registered on GitHub as a Signing Key, so commits appear as "Verified".
