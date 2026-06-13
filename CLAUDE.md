@@ -23,6 +23,7 @@
   | `hooks/` | **copy** `claude-dotfiles/hooks/` → `~/.claude/hooks/` | Same sensitive-path issue; keep as real files |
   | `knowledge/` | **symlink** (via CLAUDE.md's repo) | Part of the git repo, accessed through CLAUDE.md symlink |
   | `agents/` | **symlink** `~/.claude/agents/` → `claude-dotfiles/agents/` | Global agent templates; works as symlink |
+  | `skills/` | **symlink** `~/.claude/skills/` → `claude-dotfiles/skills/` | Global skills; works as symlink like `agents/` |
 - **Knowledge base**: a living knowledge base exists at `knowledge/` in the `claude-dotfiles` repository. During conversations, when business domain or technical knowledge emerges, proactively suggest persisting it. See `knowledge/README.md` for structure and conventions.
 - **Always consult knowledge before saying "I don't know"**: when the user mentions a term, service, alias, or concept that is not immediately recognized, **first check `knowledge/domain/glossary/index.md`** (the master index) — it maps every term to internal docs, Confluence, repos, and tools. Then drill into linked docs for details. Also check the Aliases table. The knowledge base is the primary source of truth for domain-specific information.
 - **No permission needed inside `~/.claude/`**: the lead agent (main session) does **not** need user permission for any bash commands (`rm`, `mv`, `cp`, `mkdir`, etc.) or file operations (`Read`, `Edit`, `Write`) when operating inside `~/.claude/`. This is the agent's own configuration and memory space — act freely without prompting.
