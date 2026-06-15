@@ -38,9 +38,10 @@ key is given, ask for one.
      exactly one subtask (no artificial splitting).
    - If the issue already has subtasks/children, treat them as the starting
      plan instead of inventing new ones - propose edits only where needed.
-   - Propose the mission identifier `<ISSUE-KEY>-<slug>`, used for
-     branch/worktree names. This doubles as the mission's codename - no need
-     to ask the user for a separate one.
+   - Propose the mission identifier `<ISSUE-KEY>-<slug>`, used as the mission
+     branch name (subagents in step 7 branch off it into their own
+     worktrees). This doubles as the mission's codename - no need to ask the
+     user for a separate one.
 
 4. **CHECKPOINT (the only approval gate)** - present: updated description(s),
    full breakdown (stories + subtasks, or subtasks), and the mission
@@ -51,9 +52,9 @@ key is given, ask for one.
    create Stories under the Epic and/or dev subtasks via `createJiraIssue`.
    See [REFERENCE.md](REFERENCE.md) for exact call sequences.
 
-6. **Set up the mission worktree** - `git checkout main && git pull` in
-   `REPO_PATH`, then create `~/dev/claude-working-here/worktrees/<ISSUE-KEY>/`
-   on branch `<ISSUE-KEY>-<slug>` from updated main.
+6. **Set up the mission branch** - `git checkout main && git pull` in
+   `REPO_PATH`, then `git checkout -b <ISSUE-KEY>-<slug>`. All lead-agent work
+   for this mission happens directly in `REPO_PATH` on this branch.
 
 7. **Parallel development** - for each dev subtask, spawn a
    `sandboxed-worker` agent (`mode: bypassPermissions`), all in a single
@@ -64,9 +65,9 @@ key is given, ask for one.
    description/acceptance criteria. `sandboxed-worker` already enforces no
    WHAT-comments in the code it writes - only non-obvious WHY.
 
-8. **Consolidate** - in the mission worktree, `git merge --no-ff` each
-   subagent branch in turn, then delete the merged branches. Run the full
-   lint + test suite; stop on the first failure, fix, re-run.
+8. **Consolidate** - in `REPO_PATH` (on the mission branch), `git merge
+   --no-ff` each subagent branch in turn, then delete the merged branches.
+   Run the full lint + test suite; stop on the first failure, fix, re-run.
 
 9. **Code review** - run `/code-review --fix` (medium/high effort) on the
    consolidated diff vs `main`, so findings are fixed in the working tree
@@ -80,8 +81,8 @@ key is given, ask for one.
     subtasks): comment the PR link and, if a "review"-like transition exists
     (see REFERENCE.md), move it there.
 
-12. **Cleanup** - `git worktree remove` the mission worktree (keep the branch
-    - it has an open PR). Summarize for the user: PR link, issues updated,
+12. **Wrap-up** - no worktree to remove; `REPO_PATH` stays on the mission
+    branch with the open PR. Summarize for the user: PR link, issues updated,
     branch name.
 
 ## Failure handling
