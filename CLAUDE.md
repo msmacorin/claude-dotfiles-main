@@ -182,6 +182,7 @@
 - **Each tool type needs its own permissions**: `Read(**)` does NOT cover `Glob` or `Grep` operations. You need separate `Glob(**)` and `Grep(**)` entries.
 - **Bare `**` may not match absolute paths**: `Read(**)` alone may not match `/Users/marcelo.macorin/.claude/foo`. Always include `Read(/**)` as well.
 - **NEVER chain commands with `&&`, `||`, or `;`**: Claude Code evaluates each command in a `&&`/`||`/`;` chain independently against permissions. Even if every individual command is allowed, the chain itself can trigger prompts (e.g., `cd` + `git` triggers a hardcoded "bare repository attack" check). **Always run one command per Bash tool call.** For git on other dirs, use `git -C /path <cmd>`. This rule applies to ALL agents and the main session alike.
+  - Confirmed via binary inspection (2026-06-15): the check is `bashMissKind: "cd-and-git"`, hardcoded in the Claude Code binary (not configurable via `settings.json`). It fires whenever a single bash command contains both a `cd` and a `git` subcommand, regardless of whether each is individually allow-listed. `git -C /path <cmd>` (no `cd` subcommand at all) avoids the check entirely with no security trade-off — prefer it over splitting into two Bash calls, since this shell resets cwd between tool calls anyway.
 - **Pipes (`|`) only check the first command**: `cat file | head -5` works if `cat` is allowed — `head` in the pipe is not checked. Pipes are the only safe way to combine commands in a single call.
 
 ### Permission Scoping Strategy
