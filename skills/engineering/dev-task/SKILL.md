@@ -65,6 +65,14 @@ key is given, ask for one.
    description/acceptance criteria. `sandboxed-worker` already enforces no
    WHAT-comments in the code it writes - only non-obvious WHY.
 
+   **Frontend tasks**: if the subtask touches UI (pages, components, forms,
+   SCSS, layouts), include the full contents of the project's
+   `velzon-frontend` skill in the agent prompt. Read it from
+   `.claude/skills/velzon-frontend/SKILL.md` inside `REPO_PATH` and paste
+   verbatim under a `## Frontend Guidelines` header in the agent prompt.
+   This ensures agents follow Velzon/Bootstrap/Reactstrap conventions and
+   avoid anti-patterns without needing to discover them from the codebase.
+
 8. **Consolidate** - in `REPO_PATH` (on the mission branch), `git merge
    --no-ff` each subagent branch in turn, then delete the merged branches.
    Run the full lint + test suite; stop on the first failure, fix, re-run.
