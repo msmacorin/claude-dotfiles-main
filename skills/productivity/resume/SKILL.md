@@ -21,3 +21,9 @@ Once loaded, treat the handoff document as your primary context for this convers
 - Follow references to other artifacts (PRDs, plans, issues, diffs) mentioned in the document to refresh context as needed.
 
 The handoff file is left in place after resuming, so it can be reused if the session is interrupted again.
+
+## Tracking the active slug
+
+After successfully loading a handoff, write the slug to `~/.claude/handoffs/.active-resume-slug` (create the file, or overwrite if it already exists). This allows automatic re-saving on context compaction.
+
+Use the Write tool or a Bash command to write the slug (just the slug text, no newline needed) to that path.
