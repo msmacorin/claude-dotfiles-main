@@ -1,13 +1,13 @@
 ---
 name: dev-task
-description: Develop a Jira issue (Task, Story, Bug, or Epic) end-to-end starting from its issue key. Fetches the issue, interviews the user grill-me style if requirements are thin, plans a breakdown (epic -> stories -> dev subtasks, or task -> dev subtasks) partitioned for non-conflicting parallel work, gets one approval, writes the plan back to Jira, develops every subtask in parallel via sandboxed-worker agents, consolidates, runs code review, and opens a PR ready for the user's review, linking/transitioning the Jira issue(s). Use when the user wants to start development on a Jira ticket or epic - e.g. "desenvolve a PROJ-123", "vamos trabalhar nessa task do jira", "pega esse épico e parte pro código", or `/dev-task <ISSUE-KEY>`.
+description: Develop a Jira issue (Task, Story, Bug, or Epic) end-to-end starting from its issue key. Fetches the issue, interviews the user grill-me style if requirements are thin, plans a breakdown (epic -> stories -> dev subtasks, or task -> dev subtasks) partitioned into non-overlapping scope, gets one approval, writes the plan back to Jira, implements every subtask directly in the repo's working tree, runs code review, and opens a PR ready for the user's review, linking/transitioning the Jira issue(s). Use when the user wants to start development on a Jira ticket or epic - e.g. "desenvolve a PROJ-123", "vamos trabalhar nessa task do jira", "pega esse épico e parte pro código", or `/dev-task <ISSUE-KEY>`.
 ---
 
 # Dev Task
 
 Develop a Jira issue end-to-end: gather requirements, write the plan back to
-Jira, fan out the implementation to parallel sandboxed subagents, consolidate,
-run code review, and open a PR ready for the user to review.
+Jira, implement it directly in the repo's working tree, run code review, and
+open a PR ready for the user to review.
 
 ## Quick start
 
@@ -32,16 +32,17 @@ key is given, ask for one.
    - **Epic** -> propose Stories/Tasks (title + acceptance criteria each).
      Each Story is then broken into dev subtasks (next bullet).
    - **Task/Story/Bug** -> propose dev subtasks directly.
-   - Dev subtasks must partition the work by non-overlapping file/module
-     scope so they can run in parallel without merge conflicts - explore the
-     codebase to validate the split. If the work is a single unit, propose
-     exactly one subtask (no artificial splitting).
+   - Dev subtasks must still partition the work by non-overlapping file/module
+     scope - explore the codebase to validate the split. This keeps each
+     subtask reviewable and independently verifiable even though step 7
+     implements them sequentially in the same working tree, not in parallel.
+     If the work is a single unit, propose exactly one subtask (no artificial
+     splitting).
    - If the issue already has subtasks/children, treat them as the starting
      plan instead of inventing new ones - propose edits only where needed.
    - Propose the mission identifier `<ISSUE-KEY>-<slug>`, used as the mission
-     branch name (subagents in step 7 branch off it into their own
-     worktrees). This doubles as the mission's codename - no need to ask the
-     user for a separate one.
+     branch name (created directly in `REPO_PATH` in step 6). This doubles as
+     the mission's codename - no need to ask the user for a separate one.
 
 4. **CHECKPOINT (the only approval gate)** - present: updated description(s),
    full breakdown (stories + subtasks, or subtasks), and the mission
@@ -56,29 +57,29 @@ key is given, ask for one.
    `REPO_PATH`, then `git checkout -b <ISSUE-KEY>-<slug>`. All lead-agent work
    for this mission happens directly in `REPO_PATH` on this branch.
 
-7. **Parallel development** - for each dev subtask, spawn a
-   `sandboxed-worker` agent (`mode: bypassPermissions`), all in a single
-   message so they run in parallel. Give each: `REPO_PATH`,
-   `AGENT_NAME=<ISSUE-KEY>-<subtask-key>`,
-   `TASK_BRANCH=<ISSUE-KEY>-<subtask-key>`,
-   `BASE_REF=<ISSUE-KEY>-<slug>` (the mission branch), and its subtask
-   description/acceptance criteria. `sandboxed-worker` already enforces no
-   WHAT-comments in the code it writes - only non-obvious WHY.
+7. **Implementation** - work through each dev subtask directly in
+   `REPO_PATH`, on the mission branch, in the lead session - no spawned
+   agents, no worktrees. Do them one at a time in dependency order (schema
+   before API before UI, etc.); the non-overlapping-scope split from step 3
+   still keeps each subtask reviewable on its own even though nothing runs
+   in parallel. Write no WHAT-comments - only non-obvious WHY.
 
-   **Frontend tasks**: if the subtask touches UI (pages, components, forms,
-   SCSS, layouts), include the full contents of the project's
-   `velzon-frontend` skill in the agent prompt. Read it from
-   `.claude/skills/velzon-frontend/SKILL.md` inside `REPO_PATH` and paste
-   verbatim under a `## Frontend Guidelines` header in the agent prompt.
-   This ensures agents follow Velzon/Bootstrap/Reactstrap conventions and
-   avoid anti-patterns without needing to discover them from the codebase.
+   **Frontend tasks**: if a subtask touches UI (pages, components, forms,
+   SCSS, layouts), read the project's `velzon-frontend` skill
+   (`.claude/skills/velzon-frontend/SKILL.md` inside `REPO_PATH`, if present)
+   before writing any frontend code, and follow its conventions.
 
-8. **Consolidate** - in `REPO_PATH` (on the mission branch), `git merge
-   --no-ff` each subagent branch in turn, then delete the merged branches.
-   Run the full lint + test suite; stop on the first failure, fix, re-run.
+   **Opt-in parallel exception**: only spawn `sandboxed-worker` agents in
+   worktrees for this mission if the user explicitly asks for parallel
+   subagents on it (e.g. "roda essas subtasks em paralelo"). Absent that ask,
+   always implement directly - do not default back to sandboxing because a
+   plan has multiple subtasks.
+
+8. **Verify** - in `REPO_PATH` (on the mission branch), run the full lint +
+   test suite; stop on the first failure, fix, re-run.
 
 9. **Code review** - run `/code-review --fix` (medium/high effort) on the
-   consolidated diff vs `main`, so findings are fixed in the working tree
+   mission branch's diff vs `main`, so findings are fixed in the working tree
    before the PR is opened.
 
 10. **Ship** - push the mission branch and `gh pr create` referencing
@@ -96,8 +97,8 @@ key is given, ask for one.
 ## Failure handling
 
 The checkpoint in step 4 is the only planned pause. Any execution failure - a
-subagent stuck or out of scope, merge conflicts in step 8, a test that won't
-pass, missing Jira fields/issue types/transitions - stops the flow and is
+test that won't pass, a subtask turning out to need scope not covered by the
+plan, missing Jira fields/issue types/transitions - stops the flow and is
 reported to the user. Don't guess past these; autonomy covers the happy path
 only.
 
@@ -106,4 +107,5 @@ only.
 - [REFERENCE.md](REFERENCE.md) - Atlassian MCP call sequences, ADF description
   format, issue-type/transition discovery, epic<->story linking.
 - `sandboxed-worker` agent (`claude-dotfiles/agents/sandboxed-worker.md`) - the
-  per-subtask worktree/branch isolation protocol used in step 7.
+  worktree/branch isolation protocol, only used if the user opts into
+  parallel subagents for this mission (see step 7).
