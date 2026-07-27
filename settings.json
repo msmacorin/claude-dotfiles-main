@@ -1,6 +1,4 @@
 {
-  "model": "opus",
-  "enabledPlugins": {},
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -11,11 +9,6 @@
       "Read(/**)",
       "Read(~/.claude/**)",
       "Read(/home/macorin/.claude/**)",
-      "Glob(**)",
-      "Glob(~/**)",
-      "Glob(/**)",
-      "Glob(~/.claude/**)",
-      "Glob(/home/macorin/.claude/**)",
       "Grep(**)",
       "Grep(~/**)",
       "Grep(/**)",
@@ -23,20 +16,13 @@
       "Grep(/home/macorin/.claude/**)",
       "Edit(~/.claude/**)",
       "Edit(/home/macorin/.claude/**)",
-      "Write(~/.claude/**)",
-      "Write(/home/macorin/.claude/**)",
       "Edit(~/dev/**)",
       "Edit(/home/macorin/dev/**)",
-      "Write(~/dev/**)",
-      "Write(/home/macorin/dev/**)",
       "Read(~/dev/claude-dotfiles-main/**)",
       "Read(/home/macorin/dev/claude-dotfiles-main/**)",
       "Edit(~/dev/claude-dotfiles-main/**)",
       "Edit(/home/macorin/dev/claude-dotfiles-main/**)",
-      "Write(~/dev/claude-dotfiles-main/**)",
-      "Write(/home/macorin/dev/claude-dotfiles-main/**)",
       "Edit(/tmp/**)",
-      "Write(/tmp/**)",
       "Bash(rm /tmp/**)",
       "Bash(rm -rf /tmp/**)",
       "Bash(rm ~/.claude/**)",
@@ -232,5 +218,7 @@
         ]
       }
     ]
-  }
+  },
+  "enabledPlugins": {},
+  "model": "opus"
 }
