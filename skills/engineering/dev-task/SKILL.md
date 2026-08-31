@@ -82,6 +82,10 @@ key is given, ask for one.
    mission branch's diff vs `main`, so findings are fixed in the working tree
    before the PR is opened.
 
+9.5. **Second opinion (opt-in)** - if the change is risky or you want external
+    eyes, run `/segunda-opiniao review` on the branch's diff to corroborate with
+    Codex + Gemini before shipping. Skip for trivial changes.
+
 10. **Ship** - push the mission branch and `gh pr create` referencing
     `<ISSUE-KEY>`. This PR, already reviewed and fixed, is the deliverable
     handed back to the user for human review.

@@ -205,3 +205,15 @@ Classify permissions by blast radius:
 - **Primary stack**: PHP (Laravel), JavaScript/TypeScript (React, Inertia.js), Node.js/npm
 - **PHP tooling**: `php`, `composer`, `php artisan` for Laravel projects
 - **Other CLIs**: `aws` (AWS CLI), `curl`
+
+### Multi-LLM Consultation — `segunda-opiniao` skill (Mission: segunda-opiniao)
+
+- **Goal**: let Claude get a second opinion from external LLMs (OpenAI Codex + Google Gemini) on a subject/diff and return **one synthesized verdict**, not two raw dumps.
+- **The skill** `segunda-opiniao` (`skills/engineering/segunda-opiniao/SKILL.md`) is the single place that knows how to call the CLIs (DRY — Lei #6). Two modes: general (`/segunda-opiniao <assunto>`) and review (`/segunda-opiniao review [base]`).
+- **CLI invocations** (clean output):
+  - Codex (OpenAI, `gpt-5.4`): `codex exec "PROMPT" -o <file> >/dev/null 2>&1 && cat <file>` — `--output-last-message` gives ONLY the final answer (avoids parsing the header block). Native reviewer: `codex review --base <branch>` / `--uncommitted` / `--commit <sha>`.
+  - Gemini (Google): `gemini -p "PROMPT" 2>/dev/null` — cosmetic warnings go to stderr, so always `2>/dev/null`. No review subcommand — feed it the diff explicitly.
+- **Run both in parallel** (they take tens of seconds). Prompts are self-contained — the CLIs do NOT see Claude's conversation.
+- **Resilience**: if a provider is unauthenticated (`gemini` needs Google login/`GEMINI_API_KEY`; `codex` needs `codex login`), continue with whoever answered; never fabricate the missing one.
+- **Integration pattern**: `/code-review` is **built-in and compiled into the Claude Code binary — NOT editable**. So "add external opinions to code review" is done by *calling* `segunda-opiniao` as an extra step, never by patching code-review. `dev-task` step 9.5 (opt-in) does exactly this after `/code-review --fix`.
+- **Antigravity ≠ CLI**: Google's Antigravity is a GUI IDE (VS Code fork), not a headless CLI — it does not serve the skill. The Gemini CLI auth was restored via Google login migration.
