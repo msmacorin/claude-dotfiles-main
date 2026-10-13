@@ -74,6 +74,11 @@ gh project item-edit --id "$ITEM_ID" --project-id <PROJECT-NODE-ID> \
   --field-id <STATUS-FIELD-ID> --single-select-option-id <OPTION-ID>
 ```
 
+- Newly added items get Status = Backlog from the Project's "Item added to
+  project" workflow, which runs asynchronously and can overwrite an edit made
+  right after `item-add`. For freshly created issues, wait a few seconds after
+  `item-add`, then `item-edit`, then confirm with
+  `gh project item-list <PROJECT-NUMBER> --owner <PROJECT-OWNER> --format json`.
 - Step 5: every touched issue -> **In Progress** (the epic too, if this
   mission is working on one of its stories).
 - Step 11: every issue in the PR's `Closes` lines -> **Review**.
