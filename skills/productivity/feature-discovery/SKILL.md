@@ -1,7 +1,7 @@
 ---
 name: feature-discovery
 description: Run end-to-end discovery for a feature — from the product problem to a technical implementation plan. Frames the opportunity (product discovery), researches and distills documentation, spikes into the codebase, and synthesizes a written discovery doc with a ready-to-build plan. Use when the user wants to investigate/research a feature before building it — e.g. "faz o discovery dessa feature", "quero investigar/pesquisar antes de codar", "vamos entender esse problema antes", or `/feature-discovery <feature or problem>`. Not for tasks already scoped and ready to implement — for those use dev-task.
-argument-hint: "<feature idea, problem statement, or Jira key>"
+argument-hint: "<feature idea, problem statement, or GitHub issue #N>"
 ---
 
 # Feature Discovery
@@ -28,7 +28,8 @@ half; finish by handing off to `/dev-task`.
 
 `/feature-discovery <feature or problem>`. Run from inside the target repo when
 possible (`git rev-parse --show-toplevel`) so the codebase spike has a tree to
-explore. If a Jira key is given, fetch the issue first for context.
+explore. If a GitHub issue is given (`#123` or URL), fetch it first for context
+with `gh issue view <N> --json number,title,body,labels,parent,subIssues`.
 
 ## Phase 0 — Frame the mission
 
@@ -72,8 +73,9 @@ Gather external evidence for the assumptions and the solution space:
 - Use **`WebSearch`/`WebFetch`** for external sources; when a source is worth
   keeping, run **`/knowledge-extract <source>`** to distill it into structured
   knowledge under the project's `knowledge/` dir and link it from the doc.
-- Pull any internal docs (Confluence/Jira via the Atlassian tools) tied to the
-  feature.
+- Pull internal context tied to the feature: related GitHub issues/PRs
+  (`gh issue list --search`, `gh pr list --search`) and, if the Atlassian tools
+  are connected, Confluence docs.
 
 Output into the doc: a short annotated list of sources, each with the one
 finding that changes a decision (skip sources that don't).
@@ -118,9 +120,10 @@ Finalize `~/.claude/discovery/<slug>.md` with these sections:
 7. **Implementation plan** — the Plan agent's step list, feature flag, tests.
 
 Then present a tight summary to the user and offer the handoff:
-- If a Jira issue exists → offer to update it with the plan and run `/dev-task`.
-- If not → offer to create the ticket (only if the user asks) or start
-  `/dev-task` from the discovery doc directly.
+- If a GitHub issue exists → offer to update its body with the plan
+  (`gh issue edit <N> --body-file`) and run `/dev-task <N>`.
+- If not → offer to create it with `/write-issue` (usually a `type:epic` whose
+  stories come from the plan), then `/dev-task` on it.
 
 A discovery can legitimately end at "don't build this yet" — that is a
 successful outcome, not a failure.
@@ -131,7 +134,7 @@ successful outcome, not a failure.
 |-------|------|
 | 0 Frame | `grill-me` |
 | 1 Product | `continuous-discovery`, `mom-test`, `inspired-product` |
-| 2 Research | `WebSearch`/`WebFetch`, `knowledge-extract`, Atlassian tools |
+| 2 Research | `WebSearch`/`WebFetch`, `knowledge-extract`, `gh`, Atlassian tools (Confluence) |
 | 3 Technical | `Explore` agent |
 | 4 Plan | `Plan` agent, `grill-me` |
-| 5 Handoff | `dev-task` |
+| 5 Handoff | `write-issue`, `dev-task` |
