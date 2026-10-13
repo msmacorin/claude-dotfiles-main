@@ -1,85 +1,99 @@
-# Jira Dev - Atlassian Reference
+# Dev Task - GitHub Reference
 
-Tool names below are the `mcp__atlassian__*` MCP tools.
+Everything uses the `gh` CLI (>= 2.6x for `--parent`). Run from inside the
+repo so `gh` infers `OWNER/REPO`; otherwise add `-R OWNER/REPO`.
 
 ## Fetching & classifying
 
-- `getJiraIssue(issueIdOrKey)` -> `fields.issuetype.name` (Epic/Story/Task/
-  Bug/Sub-task...), `fields.description` (ADF), `fields.project.key`,
-  `fields.subtasks`, `fields.parent`.
-- To find an Epic's children: try `searchJiraIssuesUsingJql('parent =
-  <EPIC-KEY>')` first (team-managed projects use the `parent` field); if
-  empty, try `'"Epic Link" = <EPIC-KEY>'` (company-managed projects).
-
-## Issue type discovery
-
-- `getJiraProjectIssueTypesMetadata(projectKey)` -> issue types available in
-  the project (Story, Task, Bug, Sub-task, etc.) with their ids.
-- `getJiraIssueTypeMetaWithFields(projectKey, issueTypeId)` -> required/
-  available fields for creating that issue type (parent field, Epic Link,
-  etc.). Check this before `createJiraIssue` to avoid missing-field errors.
-
-## ADF description format
-
-Jira Cloud descriptions/comments are Atlassian Document Format (ADF) JSON,
-not plain markdown. Minimal template:
-
-```json
-{
-  "type": "doc",
-  "version": 1,
-  "content": [
-    { "type": "paragraph", "content": [{ "type": "text", "text": "..." }] },
-    { "type": "bulletList", "content": [
-      { "type": "listItem", "content": [
-        { "type": "paragraph", "content": [{ "type": "text", "text": "..." }] }
-      ]}
-    ]}
-  ]
-}
+```bash
+gh issue view <N> --json number,title,body,labels,state,url,parent,subIssues
 ```
 
-Use this shape for `editJiraIssue` (description field) and
-`addCommentToJiraIssue` (body).
+- Type = the `type:*` label (`type:epic`, `type:story`, `type:task`,
+  `type:bug`). Issue Types (`--type`) only exist on organization repos; on
+  personal repos the labels are the source of truth.
+- `parent` is `null` or `{number, title, ...}`; `subIssues.nodes` lists
+  children.
+- Missing `type:*` / `area:*` labels in the repo -> stop and tell the user
+  (don't create taxonomy on the fly).
 
-## Creating Stories under an Epic
+## Updating a body
 
-- Team-managed projects: `createJiraIssue` with `fields.parent = { key:
-  <EPIC-KEY> }`.
-- Company-managed projects: set the Epic Link custom field instead (id from
-  `getJiraIssueTypeMetaWithFields`).
-- If neither field is available, fall back to `createIssueLink` with a link
-  type from `getIssueLinkTypes` (e.g. "relates to") and note the limitation to
-  the user at the checkpoint.
+```bash
+gh issue edit <N> --body-file <file>
+```
 
-## Creating dev subtasks
+Bodies are plain GitHub Markdown. Write the body to a temp file under the
+session scratchpad and pass `--body-file` to avoid shell-quoting issues.
 
-- `createJiraIssue` with `fields.issuetype = { id: <Sub-task id> }` and
-  `fields.parent = { key: <PARENT-KEY> }`.
-- If the project has no "Sub-task" issue type (check via
-  `getJiraProjectIssueTypesMetadata`), create them as `Task` and link to the
-  parent via `createIssueLink` instead - call this out at the checkpoint so
-  the user knows they won't nest visually under the parent.
+## Creating stories / dev tasks as sub-issues
 
-## Status transitions
+```bash
+gh issue create --title "<title>" --body-file <file> \
+  --label "type:story" --label "area:<x>" --parent <PARENT-N>
+```
 
-- `getTransitionsForJiraIssue(issueKey)` -> list of `{id, name}`. Match
-  case-insensitively against `/review/` to find the post-development
-  transition.
-- If no transition name matches, leave the status untouched and note it in
-  the final summary - don't guess a transition that might not reflect the
-  project's actual workflow.
-- `transitionJiraIssue(issueKey, transitionId)`.
+- Epic -> stories: `--label type:story --parent <EPIC-N>`.
+- Story/Task/Bug -> dev tasks: `--label type:task --parent <PARENT-N>`.
+- Prints the new issue URL; the number is its last path segment.
+- Existing sub-issues: edit them with `gh issue edit` instead of creating
+  duplicates. To attach an existing issue as a sub-issue:
+  `gh api -X POST repos/OWNER/REPO/issues/<PARENT-N>/sub_issues -F sub_issue_id=<databaseId>`
+  (`databaseId` from `gh api repos/OWNER/REPO/issues/<N> --jq .id`, NOT the
+  issue number).
 
-## Linking the PR back
+## Project discovery
 
-- `addCommentToJiraIssue(issueKey, <ADF body with PR URL>)` on the main issue
-  and each subtask/story touched.
+Find the Project linked to the repo (use the first one; if several, ask):
 
-## Pre-existing subtasks
+```bash
+gh api graphql -f query='{repository(owner:"OWNER",name:"REPO"){projectsV2(first:5){nodes{id number title owner{... on User{login} ... on Organization{login}}}}}}'
+```
 
-- If `getJiraIssue` already returns subtasks/children, treat their titles/
-  descriptions as the current plan. At the checkpoint, propose edits (new
-  title/description, or split/merge) rather than creating duplicates. Only
-  call `createJiraIssue` for genuinely new subtasks; use `editJiraIssue` for
-  existing ones that need updated descriptions.
+Then the Status field and its option ids:
+
+```bash
+gh project field-list <PROJECT-NUMBER> --owner <PROJECT-OWNER> --format json \
+  --jq '.fields[] | select(.name=="Status") | {id, options}'
+```
+
+Match option names case-insensitively (`in progress`, `review`). If no
+`review` option exists, skip the Review move and report it - don't pick a
+different status as a substitute.
+
+## Adding an issue to the Project & setting Status
+
+`item-add` is idempotent: for an issue already in the Project it returns the
+existing item, so it doubles as "get item id".
+
+```bash
+ITEM_ID=$(gh project item-add <PROJECT-NUMBER> --owner <PROJECT-OWNER> \
+  --url <ISSUE-URL> --format json --jq .id)
+
+gh project item-edit --id "$ITEM_ID" --project-id <PROJECT-NODE-ID> \
+  --field-id <STATUS-FIELD-ID> --single-select-option-id <OPTION-ID>
+```
+
+- Step 5: every touched issue -> **In Progress** (the epic too, if this
+  mission is working on one of its stories).
+- Step 11: every issue in the PR's `Closes` lines -> **Review**.
+- **Done** is never set by the skill: merging the PR closes the issues and
+  the Project's built-in "Item closed" / "Pull request merged" workflows
+  move them.
+
+## Shipping the PR
+
+```bash
+gh pr create --base main --title "<type>(<scope>): <summary> (#<N>)" --body-file <file>
+```
+
+Body ends with the closing keywords, one per line:
+
+```
+Closes #<STORY-N>
+Closes #<TASK-N1>
+Closes #<TASK-N2>
+```
+
+Never put the parent epic in `Closes` - it closes manually (or via its last
+story) once every sub-issue is done.
