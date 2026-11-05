@@ -1,29 +1,52 @@
 ---
 name: resume
-description: Resume a previous conversation from a handoff document saved by the "handoff" skill. Use when the user says "resume <slug>" or wants to continue work saved under a slug.
-argument-hint: "<slug>"
+description: Pick up a mission from its last handoff (saved by the "handoff" skill) without preloading the whole document. Pick a mission by slug or issue number, list the open missions of the current repo or of every repo ("/resume all"), or reopen an archived one. Triggers "resume <slug>", "continua de onde parei", "/resume 45", "quais missões estão abertas".
+category: productivity
+argument-hint: "[slug or issue number | all]"
 ---
 
-Resume work from a handoff document previously saved by the "handoff" skill.
+Find the latest handoff for a mission, pull a small preview, and continue — keeping the full document on disk as a lazy reference.
 
-## Loading the handoff
+## Pick the mission
 
-The argument is the slug. Sanitize it the same way "handoff" does (lowercase alphanumeric and hyphens) and read `~/.claude/handoffs/<slug>.md`.
+Handoffs live in `~/.claude/handoffs/<slug>/latest.md`. Older ones are flat files, `~/.claude/handoffs/<slug>.md`; treat them the same way.
 
-If no slug was given, or the file doesn't exist, list the `.md` files in `~/.claude/handoffs/` and ask the user which one to resume (or whether to start fresh).
+- **Slug or issue number given** → that mission; a number prefix matches (`/resume 45` finds `45-card-fuel-transmission`).
+- **`all`** → list open missions of every repo, grouped by the `Repo:` line.
+- **No argument** → the open missions of the current repo: handoffs (except `_archive/`) whose `Repo:` line names this repo, newest first. One → resume it. Several → show slug, date and first Summary line, and ask which.
+- **Only under `_archive/`** → say the mission was archived (PR merged) and ask whether to reopen it.
+- **Nothing found** → list what exists in `~/.claude/handoffs/` and ask which one to resume, or whether to start fresh.
 
-## Resuming
+## Extract a preview — don't read the whole file
 
-Once loaded, treat the handoff document as your primary context for this conversation:
+```bash
+awk '/^## Summary/{f=1;next} /^## /{f=0} f' <handoff>
+awk '/^## State/{f=1;next} /^## /{f=0} f' <handoff> | head -8
+awk '/^## Open questions/{f=1;next} /^## /{f=0} f' <handoff>
+awk '/^## Next steps/{f=1;next} /^## /{f=0} f' <handoff> | head -5
+awk '/^## Suggested skills/{f=1;next} /^## /{f=0} f' <handoff>
+```
 
-- Briefly summarize back to the user what you understood from the handoff and what you're about to do next, before starting work.
-- Follow the "suggested skills" section - invoke any skills it recommends.
-- Follow references to other artifacts (PRDs, plans, issues, diffs) mentioned in the document to refresh context as needed.
+A legacy handoff without these headings: read it whole.
 
-The handoff file is left in place after resuming, so it can be reused if the session is interrupted again.
+Keep the path as a lazy reference: if a later topic plausibly lives in the handoff, grep for it and read only that section.
 
-## Tracking the active slug
+## Track the active slug
 
-After successfully loading a handoff, write the slug to `~/.claude/handoffs/.active-resume-slug` (create the file, or overwrite if it already exists). This allows automatic re-saving on context compaction.
+Write the slug (no newline) to `~/.claude/handoffs/.active-resume-slug`. The compaction hook uses it to re-save the handoff after context compaction.
 
-Use the Write tool or a Bash command to write the slug (just the slug text, no newline needed) to that path.
+## Orient and continue
+
+- **Mission**: one sentence from Summary.
+- **Where we stopped**: one sentence from State.
+- **Open questions**: only if any.
+- **Next step**: the first item of Next steps.
+
+Invoke the skills listed under Suggested skills. If the mission branch isn't checked out and the next step needs code, `git -C <repo> checkout <branch>`.
+
+If the user's message already says what to do, proceed. Otherwise ask once: *"Sigo daqui?"*
+
+## Notes
+
+- The handoff is a briefing, not ground truth. Check the branch, PR and issues directly when relevant; trust the source and the user over the handoff.
+- Don't modify or delete handoff files; older ones stay for history.

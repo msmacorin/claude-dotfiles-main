@@ -1,83 +1,61 @@
 ---
 name: segunda-opiniao
-description: Take any subject - a design, a plan, a diff, a tricky decision - to external LLMs (OpenAI Codex and Google Gemini) via their local CLIs, then synthesize a single verdict comparing where they agree, where they diverge, and your own take. Two modes - general ("leva isso pros dois", "pede uma segunda opiniao", "o que o gpt e o gemini acham") and review ("passa o diff pro conselho", review of a branch/diff vs a base). Resilient - uses whichever provider is authenticated. Invoke with /segunda-opiniao <subject> or /segunda-opiniao review [base].
+description: Take any subject - a design, a plan, a file, a diff, a tricky decision - to external LLMs (OpenAI Codex and Google Gemini) via their local CLIs, then synthesize a single verdict comparing where they agree, where they diverge, what's new, and your own take. Three modes - free question ("leva isso pros dois", "pede uma segunda opinião", "o que o gpt e o gemini acham"), file/plan review, and diff review ("passa o diff pro conselho", review of a branch vs a base). Resilient - uses whichever provider is authenticated. Invoke with /segunda-opiniao <subject> or /segunda-opiniao review [base].
+category: quality
 ---
 
 # Segunda Opinião
 
-Consult external LLMs (**Codex / OpenAI** and **Gemini / Google**) through their
-local CLIs and return **one synthesized answer**, not two raw dumps. This is the
-single place that knows *how* to call them - other skills (e.g. `dev-task`) call
-this skill instead of re-implementing the CLI mechanics (DRY - Lei #6).
+Consult **Codex** (OpenAI) and **Gemini** (Google) through their local CLIs as independent reviewers, and return **one synthesized answer**, not raw dumps. This is the single place that knows how to call them — other skills (e.g. `dev-task`) call this skill instead of re-implementing the CLI mechanics.
 
-## Quick start
+It is an extra input, never the final word and never a substitute for human review. Two external models cost latency and tokens: keep it for genuinely hard calls.
 
-- `/segunda-opiniao <subject>` - general consult on a question, plan, or design.
-- `/segunda-opiniao review [base]` - review the current diff vs `base` (default
-  `main`) with both models.
+## Modes
 
-## Providers
+Pick the mode from the request; ask only if genuinely ambiguous.
 
-| Provider | CLI | Clean invocation |
-|----------|-----|------------------|
-| **Codex** (OpenAI, `gpt-5.4`) | `codex` | `codex exec "PROMPT" -o <file> >/dev/null 2>&1 && cat <file>` |
-| **Gemini** (Google) | `gemini` | `gemini -p "PROMPT" 2>/dev/null` |
+1. **Free question** — the user's question plus the context already discussed, summarized in 3–5 lines (not the whole conversation).
+2. **File / plan** — confirm the file exists with `Read`, then pass its **path** and run the CLI with the repo as working dir, so the model reads it (and related files) itself instead of getting it pasted.
+3. **Diff review** (`/segunda-opiniao review [base]`, default `main`) — Codex uses its native reviewer; Gemini gets the patch as a file via stdin. Diff over ~500 lines → warn the user and offer to focus on specific files. This composes with the built-in `/code-review` (not editable — integrate by calling this skill), it doesn't replace it.
 
-`gemini` prints cosmetic warnings to **stderr** (256-color, ripgrep) - always
-`2>/dev/null`. `codex exec` prints a header block; `--output-last-message`
-(`-o <file>`) writes **only** the final answer, so use that instead of parsing.
+## Framing
 
-**Resilience:** a provider may be unauthenticated (`gemini` needs
-`GEMINI_API_KEY` or Google login; `codex` needs `codex login`). If a call fails
-with an auth/credential error, **do not abort** - continue with whoever
-answered and tell the user which provider was skipped and why. Never invent an
-answer for a provider that did not run.
+The CLIs don't see this conversation. Every prompt is self-contained and says it is an independent second opinion, not an implementation request:
 
-## Workflow
+> "Você está sendo consultado para dar uma segunda opinião técnica, independente, sobre o que segue. Não edite nada; analise e responda com sua avaliação honesta, incluindo discordâncias. Contexto: <...>"
 
-1. **Frame the ask.** These CLIs do **not** see this conversation. Build a
-   self-contained prompt: the concrete question + the minimum context needed
-   (relevant code, the decision, constraints). Ask each for a **direct opinion
-   with reasoning**, not a mirror of the question.
+When it adds signal, give each a different lens (e.g. Codex on correctness/edge cases, Gemini on alternative designs) and say so in the synthesis. Don't impose the `/code-review` checklist — the value is an independent view.
 
-2. **Fan out in parallel.** Launch both CLIs in the **same turn** (parallel Bash
-   calls) - they are slow (tens of seconds). Write prompts/outputs to the
-   scratchpad dir, not `/tmp` hardcoded.
-   - Codex: `codex exec "$PROMPT" -o <scratch>/codex.txt >/dev/null 2>&1 && cat <scratch>/codex.txt`
-   - Gemini: `gemini -p "$PROMPT" 2>/dev/null`
-   - For long prompts, write the prompt to a file and pipe it in via stdin
-     (both CLIs accept stdin) to avoid shell-escaping pain.
+## Invocation
 
-3. **Optional: give them different lenses.** Two identical prompts often echo.
-   When it adds signal, ask each a slanted question - e.g. Codex for
-   correctness/edge cases, Gemini for alternative approaches/design - and say so
-   in the synthesis.
+Launch both in the **same turn** (parallel Bash calls) with a high timeout (e.g. 300000 ms). Prompts and outputs go to the session scratchpad dir. Read-only always: this skill never edits files or runs commands with side effects.
 
-4. **Synthesize.** Present **one** answer, in Portuguese:
-   - **Concordam:** points both landed on (highest confidence).
-   - **Divergem:** where they disagree, with each position attributed.
-   - **Meu veredito:** your own call, weighing both against the actual code/context.
-   Attribute claims to their source. Keep the raw outputs available but lead with
-   the synthesis, not the transcripts.
+| Provider | Command |
+|---|---|
+| Codex — question / file | `codex exec -s read-only --skip-git-repo-check -C <repo-or-cwd> -o <scratch>/codex.md "<prompt>"`, then read `<scratch>/codex.md` |
+| Codex — diff | `codex review --base <base>` (or `--uncommitted`, `--commit <sha>`), run from the repo |
+| Gemini — question / file | `gemini -p "<prompt>" 2>/dev/null`, run from the repo |
+| Gemini — diff | `git -C <repo> diff <base>...HEAD > <scratch>/diff.patch`, then `gemini -p "<review prompt>" < <scratch>/diff.patch 2>/dev/null` |
 
-## Review mode - `/segunda-opiniao review [base]`
+- `-o` writes only Codex's final answer — read that file, don't parse stdout. Never `-s workspace-write` or `danger-full-access`.
+- `gemini` prints cosmetic warnings to stderr: always `2>/dev/null`. **Never inline a patch** in `-p "...$(cat patch)..."` — it hangs; use stdin. Long prompts: write them to a file and pipe via stdin.
+- Model: use the CLI's configured default. If Codex refuses the model (`not supported when using Codex with a ChatGPT account`), don't try other model names — that provider is skipped.
 
-For reviewing a branch's diff (default base `main`):
+## Resilience
 
-1. **Codex** has a native reviewer - prefer it over a hand-rolled prompt:
-   - `codex review --base <base>` (diff vs a branch), or `--uncommitted`
-     (staged+unstaged+untracked), or `--commit <sha>`.
-2. **Gemini** has no review subcommand - feed it the diff explicitly:
-   - `git -C <repo> diff <base>...HEAD > <scratch>/diff.patch`
-   - prompt Gemini to review that patch for bugs, edge cases, and simplifications.
-3. **Synthesize** as above, ranked most-severe first. This composes with - does
-   **not** replace - `/code-review`: run the built-in `/code-review` for your own
-   findings, then this for external corroboration.
+A provider may be unauthenticated (`codex login`; `gemini` needs Google login or `GEMINI_API_KEY`), refuse the model, or hang. Don't abort and don't work around a login: continue with whoever answered and say which provider was skipped and why. Neither answered → say so and rely on local verification (type-check, tests, lint). Never invent an answer for a provider that didn't run.
 
-## Notes
+## Synthesis
 
-- The built-in `/code-review` is compiled into the Claude Code binary and is
-  **not** editable. Integration happens by *calling* this skill as an extra
-  step (that is how `dev-task` uses `/code-review` too), never by patching it.
-- Consulting two external models costs latency and tokens - keep it **opt-in**,
-  for genuinely hard calls, not every question.
+In Portuguese, attributing every claim to its source:
+
+```markdown
+## Segunda opinião (Codex + Gemini)
+
+**Concordam**: points both landed on (highest confidence).
+**Divergem**: where they disagree, each position attributed — the most valuable part.
+**Pontos novos**: things neither this conversation nor the other model had considered.
+**Meu veredito**: your own call, weighing both against the actual code and context.
+```
+
+Diff review: rank findings most-severe first, with `path:line`. If they add nothing and agree with the prior analysis, say so in one line — don't inflate the sections. Keep the raw outputs in the scratchpad; lead with the synthesis.

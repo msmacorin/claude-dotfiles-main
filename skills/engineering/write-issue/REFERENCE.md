@@ -63,5 +63,5 @@ gh project item-edit --id "$ITEM_ID" --project-id <PROJECT-NODE-ID> \
   --field-id <ITERATION-FIELD-ID> --iteration-id <ITERATION-ID>
 ```
 
-Find the Project linked to the repo as in `dev-task`'s REFERENCE.md. Leave
+Find the Project linked to the repo as in `dev-task`'s references/github-calls.md. Leave
 Status alone - the "Item added to project" workflow sets Backlog.
